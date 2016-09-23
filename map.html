@@ -12,6 +12,63 @@
     <!-- Optional theme -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
 
+    <style>
+        .navbar-default {
+            background-image: linear-gradient(to bottom, pink 0, pink 100%);
+        }
+        /* navbar pink */
+        .navbar-pink {
+            background-color: pink;
+            border: none;
+        }
+        /* change logo text color and hover color */
+        .navbar-pink .navbar-brand {
+            color: #fff
+        }
+        .navbar-pink .navbar-brand:hover, .navbar-pink .navbar-brand:focus {
+            color:#fff
+        }
+        /* Change nav links color */
+        .navbar-pink .navbar-nav > li > a {
+            color:#fff
+        }
+        .navbar-pink .navbar-nav > li > a:hover {
+            color:#fff
+        }
+        /* change visited color */
+        .navbar-pink .navbar-nav > li > a:focus {
+            color:#fff
+        }
+        /* form */
+        .navbar-pink .form-control {
+            border-radius:4;
+            border:none
+        }
+        .navbar-pink .form-control {
+            border:1px solid pink
+        }
+        .navbar-pink .btn {
+            border:1px solid pink
+        }
+        /* open drop down background color */
+        .navbar-pink .navbar-nav .open .dropdown-menu {
+            background:#fff
+        }
+        /* mobile toggle nav icon */
+        .navbar-pink .navbar-toggle {
+            border-color:#e7e7e7
+        }
+        .navbar-pink .navbar-toggle .icon-bar {
+            background-color:#e7e7e7
+        }
+        .navbar-pink .navbar-toggle:focus, .navbar-pink .navbar-toggle:hover {
+            background-color:#fff
+        }
+        .navbar-pink .navbar-toggle:focus .icon-bar, .navbar-pink .navbar-toggle:hover .icon-bar {
+            background-color:#3b5998
+        }
+
+    </style>
 
     <!-- Latest compiled and minified JQuery -->
     <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
@@ -25,31 +82,47 @@
 
     <script src="Perth_JSON.js"></script>
 
+    <script src="mapstyles.js"></script>
+
     <script type="text/javascript">
         var aLocations;
         var marker = [];
         var map;
         var mapOptions = {
-            zoom: 13,
+            zoom: 10,
             mapTypeId: google.maps.MapTypeId.ROADMAP,
-            center: new google.maps.LatLng(-31.9505, 115.8605)
+            center: new google.maps.LatLng(-31.9505, 115.8605),
+            styles: styles
         };
+        var perthCrd = [
+            new google.maps.LatLng(-31.6244855, 116.239023),
+            new google.maps.LatLng(-32.4556425, 115.6840483)
+        ];
+
+        var perthBounds = new google.maps.LatLngBounds();
+
+        perthBounds.extend(perthCrd[0]);
+        perthBounds.extend(perthCrd[1]);
+
+        var infowindow = new google.maps.InfoWindow();
+
         var polyArray = [];
+        var hex = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, A: 10, B: 11, C: 12, D: 13, E: 14, F: 15};
         function initialize() {
             map = new google.maps.Map(document.getElementById("map_canvas"),
                     mapOptions);
             var auto_options = {
-                types: ['geocode']
-                //componentRestrictions: {country: "us"}
+                types: ['geocode'],
+                componentRestrictions: {country: "au"}
             };
 
             var address_bar = (document.getElementById('address_bar'));
             var address = (document.getElementById('address'));
-            var autocomplete = new google.maps.places.Autocomplete(address);
+            var autocomplete = new google.maps.places.Autocomplete(address, auto_options);
 
             google.maps.event.addListener(autocomplete, 'place_changed', function() {
                 var place = autocomplete.getPlace();
-                if (!place.geometry) {
+                if (!place.geometry || !(perthBounds.contains(place.geometry.location))) {
                     return;
                 }
                 map.setCenter(place.geometry.location);
@@ -66,41 +139,72 @@
             var placeMarks = perth_json.kml.Document.Folder.Placemark;
             for(var i in poly) {
                 var coordinates = poly[i].geometry.coordinates[0];
+                var name = poly[i].properties.Name;
+                var description = poly[i].properties.Description;
                 var polyStyle = placeMarks[i].styleUrl.replace("#", "");
                 polyStyle += "-normal";
                 var lineColor = "";
                 var polyColor = "";
-                for(var i in style) {
-                    if(style[i]["-id"] == polyStyle) {
-                        lineColor = style[i].LineStyle.color;
-                        polyColor = style[i].PolyStyle.color;
+                for (var j in style) {
+                    if (style[j]["-id"] == polyStyle) {
+                        lineColor = style[j].LineStyle.color;
+                        polyColor = style[j].PolyStyle.color;
                     }
                 }
                 var poly_path = [];
-                for(var i in coordinates) {
-                    var crd = new google.maps.LatLng(coordinates[i][0], coordinates[i][1]);
+                for (var k in coordinates) {
+                    var crd = new google.maps.LatLng(coordinates[k][1], coordinates[k][0]);
+
                     poly_path.push(crd);
                 }
-                if(i == 0) {
-                    polyArray[i] = new google.maps.Polygon({
-                        paths: poly_path,
-                        strokeColor: '#'+lineColor,
-                        strokeOpacity: 0.8,
-                        strokeWeight: 1,
-                        fillColor: '#'+polyColor,
-                        fillOpacity: 0.35
-                    });
-                    polyArray[i].setMap(map);
-                }
+                var lineOpacity = getOpacity(lineColor.substring(0,1), lineColor.substring(1,2));
+                lineColor = lineColor.substring(2,8);
+                var polyOpacity = getOpacity(polyColor.substring(0,1), polyColor.substring(1,2));
+                polyColor = polyColor.substring(2,8);
+                polyArray[i] = new google.maps.Polygon({
+                    paths: poly_path,
+                    strokeColor: '#'+lineColor,
+                    strokeOpacity: lineOpacity,
+                    strokeWeight: 1.5,
+                    fillColor: '#'+polyColor,
+                    fillOpacity: polyOpacity,
+                    name: name,
+                    desc: description,
+                    map: map
+                });
+                var bounds = new google.maps.LatLngBounds();
+                polyArray[i].getPath().forEach(function(element,index){bounds.extend(element)});
+                var poly_center = bounds.getCenter();
+                polyArray[i].center = poly_center;
+                google.maps.event.addListener(polyArray[i], "click", function (event) {
+                    var content = "Name: <b>" + this.name + "</b><br/>Description: <b>" + this.desc + "</b>";
+                    infowindow.setContent(content);
+                    infowindow.setPosition(this.center);
+                    infowindow.open(map);
+                });
             }
+        }
+
+        function getOpacity(a, b) {
+            var hex_a = hex[a.toUpperCase()] * 16;
+            var hex_b = hex[b.toUpperCase()] * 1;
+            var opacity = (hex_a + hex_b) / 255;
+            return opacity;
         }
 
         google.maps.event.addDomListener(window, 'load', initialize);
     </script>
 </head>
 <body>
+<nav class="navbar navbar-default navbar-pink navbar-fixed-top">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="">Perth Same Day Delivery Locations</a>
+        </div>
+    </div>
+</nav>
 <div class="input-group col-md-4" id="address_bar">
-    <input type="text" class="form-control" style="margin-left: 20px" id="address" name="address" placeholder="Search Address" />
+    <input type="text" class="form-control" style="margin: 20px" id="address" name="address" placeholder="Search Address" />
 </div>
 <div id="map_canvas" style="position: absolute !important;width: 100%; height: 100%"></div>
 </body>
