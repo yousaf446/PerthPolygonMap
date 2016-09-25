@@ -78,11 +78,13 @@
 
     <script src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry&key=AIzaSyA7xY6JgrR-hAOLs1ZmZU9vCoFNb_YQ7qI"></script>
 
-    <!-- <script src="Perth.js"></script>
+     <script src="Perth.js"></script>
 
-    <script src="Perth_JSON.js"></script> -->
+    <script src="Perth_JSON.js"></script>
 
     <script src="mapstyles.js"></script>
+
+    <script src="label.js"></script>
 
     <script type="text/javascript">
         var aLocations;
@@ -107,6 +109,9 @@
         var infowindow = new google.maps.InfoWindow();
 
         var polyArray = [];
+        var polyLabel = [];
+        var polyMarker = [];
+
         var hex = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, A: 10, B: 11, C: 12, D: 13, E: 14, F: 15};
         function initialize() {
             map = new google.maps.Map(document.getElementById("map_canvas"),
@@ -134,13 +139,13 @@
         }
 
         function getGeoJSON() {
-            $.get('Perth.geojson', function(response) {
-                var data = JSON.parse(response);
-                var poly = data.features;
-                $.get('Perth_JSON.geojson', function(response) {
-                    var data = JSON.parse(response);
-                    var style = data.kml.Document.Style;
-                    var placeMarks = data.kml.Document.Folder.Placemark;
+            //$.get('Perth.geojson', function(response) {
+                //var data = JSON.parse(response);
+                var poly = perth.features;
+                //$.get('Perth_JSON.geojson', function(response) {
+                    //var data = JSON.parse(response);
+                    var style = perth_json.kml.Document.Style;
+                    var placeMarks = perth_json.kml.Document.Folder.Placemark;
                     for(var i in poly) {
                         var coordinates = poly[i].geometry.coordinates[0];
                         var name = poly[i].properties.Name;
@@ -176,10 +181,27 @@
                             desc: description,
                             map: map
                         });
+
                         var bounds = new google.maps.LatLngBounds();
                         polyArray[i].getPath().forEach(function(element,index){bounds.extend(element)});
                         var poly_center = bounds.getCenter();
                         polyArray[i].center = poly_center;
+
+                        polyMarker[i] = new google.maps.Marker({
+                            map: map,
+                            title: name,
+                            position: polyArray[i].center,
+                            visible: false,
+                            id: i
+                        });
+                        polyLabel[i] = new Label({
+                            map: map
+                        });
+
+                        polyLabel[i].bindTo('position', polyMarker[i]);
+                        polyLabel[i].bindTo('text',  polyMarker[i], 'title');
+                        polyLabel[i].bindTo('visible',  polyMarker[i]);
+
                         google.maps.event.addListener(polyArray[i], "click", function (event) {
                             var content = "Name: <b>" + this.name + "</b><br/>Description: <b>" + this.desc + "</b>";
                             infowindow.setContent(content);
@@ -187,8 +209,8 @@
                             infowindow.open(map);
                         });
                     }
-                })
-            })
+                //})
+            //})
         }
 
         function getOpacity(a, b) {
