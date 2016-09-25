@@ -14,11 +14,11 @@
 
     <style>
         .navbar-default {
-            background-image: linear-gradient(to bottom, pink 0, pink 100%);
+            background-image: linear-gradient(to bottom, #e5bac1 0, #e5bac1 100%);
         }
         /* navbar pink */
         .navbar-pink {
-            background-color: pink;
+            background-color: #e5bac1;
             border: none;
         }
         /* change logo text color and hover color */
@@ -45,10 +45,10 @@
             border:none
         }
         .navbar-pink .form-control {
-            border:1px solid pink
+            border:1px solid #e5bac1
         }
         .navbar-pink .btn {
-            border:1px solid pink
+            border:1px solid #e5bac1
         }
         /* open drop down background color */
         .navbar-pink .navbar-nav .open .dropdown-menu {
@@ -112,6 +112,8 @@
         var polyLabel = [];
         var polyMarker = [];
 
+        var search_mark = null;
+
         var hex = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, A: 10, B: 11, C: 12, D: 13, E: 14, F: 15};
         function initialize() {
             map = new google.maps.Map(document.getElementById("map_canvas"),
@@ -124,7 +126,9 @@
             var address_bar = (document.getElementById('address_bar'));
             var address = (document.getElementById('address'));
             var autocomplete = new google.maps.places.Autocomplete(address, auto_options);
-
+            search_mark = new google.maps.Marker({
+                map: map
+            });
             google.maps.event.addListener(autocomplete, 'place_changed', function() {
                 var place = autocomplete.getPlace();
                 if (!place.geometry || !(perthBounds.contains(place.geometry.location))) {
@@ -132,6 +136,7 @@
                 }
                 map.setCenter(place.geometry.location);
                 map.setZoom(14);
+                search_mark.setPosition(place.geometry.location);
             });
 
             map.controls[google.maps.ControlPosition.LEFT_TOP].push(address_bar);
