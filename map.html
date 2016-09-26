@@ -114,6 +114,8 @@
 
         var search_mark = null;
 
+        var ctaLayer;
+
         var hex = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, A: 10, B: 11, C: 12, D: 13, E: 14, F: 15};
         function initialize() {
             map = new google.maps.Map(document.getElementById("map_canvas"),
@@ -140,7 +142,9 @@
             });
 
             map.controls[google.maps.ControlPosition.LEFT_TOP].push(address_bar);
-            getGeoJSON();
+            //getGeoJSON();
+            loadKML();
+            loadLabels();
         }
 
         function getGeoJSON() {
@@ -216,6 +220,100 @@
                     }
                 //})
             //})
+        }
+
+        function loadKML() {
+            ctaLayer = new google.maps.KmlLayer({
+                url: 'https://www.google.com/maps/d/u/0/kml?mid=1VZonDqZhao8ikpVpqkSTH4z9TvY&nl=1',
+                map: map
+            });
+
+        }
+
+        function loadLabels() {
+            var poly = perth.features;
+            var style = perth_json.kml.Document.Style;
+            var placeMarks = perth_json.kml.Document.Folder.Placemark;
+            for(var i in poly) {
+                var coordinates = poly[i].geometry.coordinates[0];
+                var name = poly[i].properties.Name;
+                var description = poly[i].properties.Description;
+                var polyStyle = placeMarks[i].styleUrl.replace("#", "");
+                polyStyle += "-normal";
+                var lineColor = "";
+                var polyColor = "";
+                for (var j in style) {
+                    if (style[j]["-id"] == polyStyle) {
+                        lineColor = style[j].LineStyle.color;
+                        polyColor = style[j].PolyStyle.color;
+                    }
+                }
+                var poly_path = [];
+                for (var k in coordinates) {
+                    var crd = new google.maps.LatLng(coordinates[k][1], coordinates[k][0]);
+
+                    poly_path.push(crd);
+                }
+                var lineOpacity = getOpacity(lineColor.substring(0,1), lineColor.substring(1,2));
+                lineColor = lineColor.substring(2,8);
+                var polyOpacity = getOpacity(polyColor.substring(0,1), polyColor.substring(1,2));
+                polyColor = polyColor.substring(2,8);
+                polyArray[i] = new google.maps.Polygon({
+                    paths: poly_path,
+                    strokeColor: '#'+lineColor,
+                    strokeOpacity: lineOpacity,
+                    strokeWeight: 1.5,
+                    fillColor: '#'+polyColor,
+                    fillOpacity: polyOpacity,
+                    name: name,
+                    desc: description,
+                    map: map,
+                    visible: false
+                });
+
+                var bounds = new google.maps.LatLngBounds();
+                polyArray[i].getPath().forEach(function(element,index){bounds.extend(element)});
+                var poly_center = bounds.getCenter();
+                polyArray[i].center = poly_center;
+
+                polyMarker[i] = new google.maps.Marker({
+                    map: map,
+                    title: name,
+                    position: polyArray[i].center,
+                    visible: false,
+                    id: i
+                });
+                polyLabel[i] = new Label({
+                    map: map
+                });
+
+                polyLabel[i].bindTo('position', polyMarker[i]);
+                polyLabel[i].bindTo('text',  polyMarker[i], 'title');
+                polyLabel[i].bindTo('visible',  polyMarker[i]);
+
+                google.maps.event.addListener(polyArray[i], "click", function (event) {
+                    var content = "Name: <b>" + this.name + "</b><br/>Description: <b>" + this.desc + "</b>";
+                    infowindow.setContent(content);
+                    infowindow.setPosition(this.center);
+                    infowindow.open(map);
+                });
+            }
+
+            google.maps.event.addListener(map, 'zoom_changed', function() {
+                setLabels();
+            });
+        }
+
+        function setLabels() {
+            if(map.getZoom() > 12) {
+                for(var i in polyLabel) {
+                    polyLabel[i].setMap(map);
+                }
+            } else {
+                for(var i in polyLabel) {
+                    polyLabel[i].setMap(null);
+                }
+            }
         }
 
         function getOpacity(a, b) {
